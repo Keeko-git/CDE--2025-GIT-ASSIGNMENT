@@ -1,0 +1,107 @@
+################################################################################
+# CoreDataEngineers - Simple ETL Pipeline
+# Author: [Temidayo]
+# Date:   [05/09/2025]
+#
+# Description:
+#   This script performs a simple ETL (Extract, Transform, Load) process
+#   on a CSV file hosted online. It:
+#     1. Extracts: Downloads a CSV file into the 'raw' directory
+#     2. Transforms: Cleans and selects specific columns, stores results in 'transformed'
+#     3. Loads: Moves the transformed file into the 'gold' directory
+#
+# Requirements:
+#   - Linux environment with wget, awk, and sed installed
+#   - Internet connectivity for extraction
+################################################################################
+
+# -------------------------- CONFIGURATION ------------------------------------
+# Environment variable: CSV file URL
+export DATA_URL="https://example.com/your_file.csv"   # <-- Replace with real URL
+
+# Filenames
+RAW_FILE="raw_data.csv"
+TRANSFORMED_FILE="2023_year_finance.csv"
+
+# Directories
+RAW_DIR="raw"
+TRANSFORMED_DIR="transformed"
+GOLD_DIR="gold"
+
+# -------------------------- FUNCTIONS ----------------------------------------
+
+# Check if a directory exists, else create it
+create_dir_if_not_exists() {
+  if [ ! -d "$1" ]; then
+    echo "Directory '$1' does not exist. Creating..."
+    mkdir -p "$1"
+  else
+    echo "Directory '$1' already exists."
+  fi
+}
+
+# -------------------------- EXTRACT ------------------------------------------
+echo "================= ETL PROCESS STARTED ================="
+
+echo "[EXTRACT] Step 1: Preparing raw data directory..."
+create_dir_if_not_exists "$RAW_DIR"
+
+echo "[EXTRACT] Step 2: Downloading CSV file from source..."
+wget -q -O "$RAW_DIR/$RAW_FILE" "$DATA_URL"
+
+# Confirm file downloaded
+if [ -f "$RAW_DIR/$RAW_FILE" ]; then
+  echo "[EXTRACT] File successfully downloaded and saved to '$RAW_DIR/$RAW_FILE'."
+else
+  echo "[EXTRACT] ERROR: File download failed. Exiting..."
+  exit 1
+fi
+
+# -------------------------- TRANSFORM ----------------------------------------
+echo "[TRANSFORM] Step 3: Preparing transformed directory..."
+create_dir_if_not_exists "$TRANSFORMED_DIR"
+
+echo "[TRANSFORM] Step 4: Renaming column 'Variable_code' to 'variable_code'..."
+# First, fix the column header
+HEADER=$(head -n 1 "$RAW_DIR/$RAW_FILE" | sed 's/Variable_code/variable_code/g')
+
+echo "[TRANSFORM] Step 5: Selecting columns (year, Value, Units, variable_code)..."
+# Extract only required columns
+# Assumes columns are comma-separated; adjust awk field numbers accordingly
+awk -F',' 'NR==1 {
+    for (i=1; i<=NF; i++) {
+        if ($i=="year") y=i
+        if ($i=="Value") v=i
+        if ($i=="Units") u=i
+        if ($i=="variable_code") c=i
+    }
+    print "year,Value,Units,variable_code"
+    next
+}
+NR>1 { print $y","$v","$u","$c }' <(echo "$HEADER"; tail -n +2 "$RAW_DIR/$RAW_FILE") \
+> "$TRANSFORMED_DIR/$TRANSFORMED_FILE"
+
+# Confirm file saved
+if [ -f "$TRANSFORMED_DIR/$TRANSFORMED_FILE" ]; then
+  echo "[TRANSFORM] File successfully transformed and saved to '$TRANSFORMED_DIR/$TRANSFORMED_FILE'."
+else
+  echo "[TRANSFORM] ERROR: Transformation failed. Exiting..."
+  exit 1
+fi
+
+# -------------------------- LOAD ---------------------------------------------
+echo "[LOAD] Step 6: Preparing gold directory..."
+create_dir_if_not_exists "$GOLD_DIR"
+
+echo "[LOAD] Step 7: Loading transformed file into gold directory..."
+cp "$TRANSFORMED_DIR/$TRANSFORMED_FILE" "$GOLD_DIR/"
+
+# Confirm file saved
+if [ -f "$GOLD_DIR/$TRANSFORMED_FILE" ]; then
+  echo "[LOAD] File successfully loaded into '$GOLD_DIR/$TRANSFORMED_FILE'."
+else
+  echo "[LOAD] ERROR: Loading step failed. Exiting..."
+  exit 1
+fi
+
+echo "================= ETL PROCESS COMPLETED SUCCESSFULLY ================="
