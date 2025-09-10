@@ -1,0 +1,24 @@
+
+#!/bin/bash
+
+# Define variables
+URL="https://www.stats.govt.nz/assets/Uploads/Annual-enterprise-survey/Annual-enterprise-survey-2023-financial-year-provisional/Download-data/annual-enterprise-survey-2023-financial-year-provisional.csv" 
+ 
+RAW_FOLDER="raw"
+FILE_NAME="sample.csv"
+
+# Step 1: Create the 'raw' folder if it doesn't exist
+if [ ! -d "$RAW_FOLDER" ]; then
+    mkdir "$RAW_FOLDER"
+    echo "Created folder: $RAW_FOLDER"
+fi
+
+# Step 2: Download the CSV file into the 'raw' folder
+curl -o "$RAW_FOLDER/$FILE_NAME" "$URL"
+
+# Step 3: Confirm the file has been saved
+if [ -f "$RAW_FOLDER/$FILE_NAME" ]; then
+    echo "File successfully downloaded and saved in the '$RAW_FOLDER' folder."
+else
+    echo "Failed to download the file. Please check the URL or folder permissions."
+fi
